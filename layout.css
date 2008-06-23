@@ -1,0 +1,132 @@
+#menubar {
+  position: absolute;
+  top: 0em;
+	left: 0.1em;
+	right: 0.1em;
+	height: 1.5em;
+  background: #d4d0c8;
+	margin: 2px;
+  z-index: 99;
+}
+
+#toolbar {
+  position: absolute;
+	top: 1.6em;
+	left: 0.1em;
+  right: 0.1em;
+	height: 2.7em;
+  background: #d4d0c8;
+	margin: 2px;
+}
+
+#targets {
+  position: absolute;
+	top: 4.4em;
+  left: 0.1em;
+	width: 10.6em;
+	height: 2.7em;
+  background: #d4d0c8;
+	margin: 2px;
+	float: left;
+}
+
+#table {
+  position: absolute;
+  right: 0.1em;
+	left: 11em;
+	bottom: 168px; /* 3px + 160px + 5px padding */
+	top: 4.4em;
+  background: #d4d0c8;
+	margin: 2px;
+	float: right;
+}
+
+#hand {
+  position: absolute;
+	top: 7.1em;
+	bottom: 168px; /* 3px + 160px + 5px padding */
+  left: 0.1em;
+	width: 10.6em;
+	background: #d4d0c8;
+	margin: 2px;
+	float: left;
+}
+
+#players {
+  position: absolute;
+  left: 0.1em;
+	width: 10.6em;
+	height: 160px;
+	bottom: 3px;
+	background: #d4d0c8;
+	margin: 2px;
+	float: left;
+  border-color: white;
+	border-width: 5px 0px 0px 0px;
+	border-style: solid;
+}
+
+#chat {
+  position: absolute;
+	right: 0.1em;
+  left: 11em;
+	height: 160px;
+	bottom: 3px;
+	background: #d4d0c8;
+	margin: 2px;
+	float: right;
+	border-color: white;
+	border-width: 5px 0px 0px 0px;
+	border-style: solid;
+}
+
+.halfspacer {
+  clear: none;
+	height: 2.5em;
+	width: 1.25em;
+	float: left;
+	border: none;
+	background: transparent;
+}
+
+.spacer {
+  clear: none;
+	height: 2.5em;
+	width: 2.5em;
+	float: left;
+	border: none;
+	background: transparent;
+}
+
+.button {
+  clear: none;
+	height: 2.5em;
+	width: 2.5em;
+	float: left;
+	border: solid 1px black;
+	background: transparent;
+}
+
+#handlist {
+  clear: both;
+	width: 99%;
+	height: 95%;
+	background: #d4d0c8;
+}
+
+#chat_output {
+  position: absolute;
+	margin: 3px;
+  width: 99%;
+	top: 0px;
+	height: 85%;
+	background: #d4d0c8;
+}
+
+#chat_input {
+  position: absolute;
+	margin: 3px;
+  width: 99%;
+	bottom: 0px;
+	height: 10%;
+}

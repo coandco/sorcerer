@@ -1,0 +1,260 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html>
+<head>
+<title>Testbed</title>
+<link rel="stylesheet" href="layout.css" type="text/css"></link>
+<link rel="stylesheet" href="menu.css" type="text/css"></link>
+<script type="text/javascript" src="javascript/menu.js"></script>
+<script type="text/javascript" src="javascript/prototype-1.6.0.1.js"></script>
+<script type="text/javascript" src="javascript/event-selectors.js"></script>
+<script type="text/javascript" src="javascript/scriptaculous.js"></script>
+
+
+<style type="text/css">
+
+.card {
+  position: absolute;
+  width: 3em;
+	height: 3em;
+	border: solid 1px black;
+	background: red;
+}
+
+</style>
+
+<script language="JavaScript" type="text/javascript">
+// <![CDATA[
+
+var Rules = {
+  '.card': function(element) {
+	  element.offTable = "false";
+		new Draggable(element, {
+		  scroll: window,
+			snap: [25,25],
+			revert: function(element) {
+				$('table_out').innerHTML = "Revert for " + element.innerHTML + " set to " + element.offTable;
+				if(element.offTable == "false")
+				  return false;
+				return true;
+			},
+			change: function(draggable) {
+			  $left = draggable.element.offsetLeft;
+				$top = draggable.element.offsetTop;
+				if (($left < 0) || ($top < 0) || ($left > $('table').offsetWidth) || ($top > $('table').offsetHeight))
+				  draggable.element.offTable = "true";
+				else
+				  draggable.element.offTable = "false";
+			  $('table_out').innerHTML = $left + " " + $top;
+			}
+		});
+	},
+	
+	'.card:contextmenu': function(element) {
+	  alert("Class is " + element.className);
+		return false;
+	},
+	
+	'.droptarget': function(element, target) {
+	  Droppables.add(element, {
+		  accept: 'card', 
+			onDrop: function(element, target) {
+			  if (target.id != "table") {
+  			element.parentNode.removeChild(element);
+			  alert("Dropped " + element.className + " on " + target.id);
+				}			
+			}
+		}); 
+	},
+	
+	
+	'.button:click': function(element) {
+	  alert("You clicked " + element.id + "!");
+	}
+} 
+
+	// ]]>
+</script>
+
+
+</head>
+<body onload="EventSelectors.start(Rules); sfHover();">
+<div id="menubar">
+  <ul id="nav">
+    <li class="menufile"><a href="#" id="stupid">File</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_newgame">New Game...</a></li>
+      <li class="menuitem"><a href="#" id="menu_deck_editor">Deck Editor...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_sealed_deck_generator">Sealed Deck Generator...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_save_message_window">Save Message Window Buffer...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="Exit">Exit</a></li>
+      </ul>
+    </li>
+    <li class="menugame"><a href="#">Game</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_set_life">Set Life...</a></li>
+      <li class="menuitem"><a href="#" id="menu_next_phase">Next Phase</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_increment_life">Increment Life</a></li>
+      <li class="menuitem"><a href="#" id="menu_decrement_life">Decrement Life</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_increment_turn">Increment Turn</a></li>
+      <li class="menuitem"><a href="#" id="menu_decrement_turn">Decrement Turn</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_untap_step">Declare Untap Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_upkeep_step">Declare Upkeep Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_draw_step">Declare Draw Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_main_phase">Declare Main Phase</a></li>
+      <li class="menuitem"><a href="#" id="menu_combat_phase">Declare Combat Phase</a></li>
+      <li class="menuitem"><a href="#" id="menu_end_phase">Declare End of Turn Phase</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_clear_buffer">Clear Buffer</a></li>
+      </ul>
+    </li>
+    <li class="menuaction"><a href="#">Action</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_draw_card">Draw Card</a></li>
+      <li class="menuitem"><a href="#" id="menu_untap_permanents">Untap My Permanents</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_create_card">Create Card...</a></li>
+      <li class="menuitem"><a href="#" class="menuitem" id="menu_discard_random_card">Bury Random Card From Hand</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_flip_coin">Flip a Coin</a></li>
+      <li class="menuitem"><a href="#" id="menu_roll_die">Roll a Die</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_shuffle_library">Shuffle Library</a></li>
+      <li>-----------------</li>
+      <li><a href="#" class="menu_haschild">Library &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_grave">Move Library to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_hand">Move Library to Hand</a>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_rfg">Remove Library from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Graveyard &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_lib">Move Graveyard to Library</a>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_hand">Move Graveyard to Hand</a>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_rfg">Remove Graveyard from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Hand &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_Library">Move Hand to Library</a>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_grave">Move Hand to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_rfg">Remove Hand from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Remove from Game &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_rfg_to_lib">Move RFG to Library</a>
+        <li class="submenuitem"><a href="#" id="Move_RFG_to_Graveyard">Move RFG to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="Move_RFG_to_Hand">Move RFG to Hand</a>
+        </ul>
+      </li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_clear_message_window">Clear Buffer</a></li>
+      </ul>
+    </li>
+    <li class="menuview"><a href="#">View</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_view_my_grave">My Graveyard...</a></li>
+      <li class="menuitem"><a href="#" id="menu_view_other_grave">Opponent's Graveyard...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_my_rfg">My Removed Cards...</a></li>
+      <li class="menuitem"><a href="#" id="menu_view_other_rfg">Opponent's Removed Cards...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_my_lib">My Library...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_top_of_lib">Top Cards Of My Library...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_game_status">Game Status...</a></li>
+      </ul>
+    </li>
+    <li class="menushow"><a href="#">Show</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_reveal_hand">My Hand</a></li>
+      <li class="menuitem"><a href="#" id="menu_reveal_library">My Entire Library</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_reveal_random_hand_card">Random card from Hand</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_reveal_top_lib_card">Top card from my Library</a></li>
+      </ul>
+    </li>
+    <li class="menucommunications"><a href="#">Communications</a>
+      <ul>
+      <li class="menuitem"><a href="#">To Add if wanted</a></li>
+      </ul>
+    </li>
+    <li class="menuoptions"><a href="#">Options</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_preferences">Preferences...</a></li>
+      <li class="menuitem"><a href="#" id="menu_set_name">Set Name...</a></li>
+      </ul>
+    </li>
+    <li class="menuhelp"><a href="#">Help</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_help">Help...</a></li>
+      <li class="menuitem"><a href="#" id="menu_about">About...</a></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div id="toolbar">
+  <div class="button" id="btn_newgame" title="New Game"></div>
+  <div class="button" id="btn_deckeditor" title="Deck Editor"></div>
+  <div class="button" id="btn_untapall" title="Untap All"></div>
+  <div class="button" id="btn_drawcard" title="Draw Card"></div>
+  <div class="spacer"></div>
+  <div class="button" id="btn_phase_untap" title="Untap Phase"></div>
+  <div class="button" id="btn_phase_upkeep" title="Upkeep Phase"></div>
+  <div class="button" id="btn_phase_draw" title="Draw Phase"></div>
+  <div class="button" id="btn_phase_main" title="Main Phase"></div>
+  <div class="button" id="btn_phase_attack" title="Attack Phase"></div>
+  <div class="button" id="btn_phase_discard" title="Discard Phase"></div>
+  <div class="button" id="btn_passturn" title="Pass the Turn"></div>
+  <div class="spacer"></div>
+  <div class="button" id="btn_setlife" title="Set life..."></div>
+  <div class="button" id="btn_decrementlife" title="Decrement Life"></div>
+  <div class="button" id="btn_incrementlife" title="Increment Life"></div>
+  <div class="button" id="btn_ping" title="Ping"></div>
+</div>
+<div id="targets">
+  <div class="halfspacer"></div>
+  <div class="button droptarget" id="btn_target_library" title="Drop target: Library"></div>
+	<div class="button droptarget" id="btn_target_graveyard" title="Drop target: Graveyard"></div>
+	<div class="button droptarget" id="btn_target_rfg" title="Drop Target: Remove From Game"></div>
+</div>
+<div id="table" class="droptarget">
+  <span id="table_out">Table</span>
+  <div class="card">Card8</div>
+	<div class="card">Card7</div>
+	<div class="card">Card6</div>
+	<div class="card">Card5</div>
+	<div class="card">Card4</div>
+	<div class="card">Card3</div>
+	<div class="card">Card2</div>
+	<div class="card">Card1</div>
+</div>
+<div id="hand">
+  My Hand
+  <select name="handlist_ctl" id="handlist" class="droptarget" size="2">
+	  <option>3W - Worship</option>
+	  <option>1G - Fertile Ground</option>
+	  <option>1GG - Troll Ascetic</option>
+  </select>
+</div>
+<div id="players">Players</div>
+<div id="chat">
+  <textarea id="chat_output" disabled></textarea>
+	<input type="text" id="chat_input"></input>
+</div>
+
+</body>
+</html>
+
