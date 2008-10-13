@@ -1,0 +1,471 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+  "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html>
+<head>
+<title>Testbed</title>
+<link rel="stylesheet" href="css/layout.css" type="text/css"></link>
+<link rel="stylesheet" href="css/menu.css" type="text/css"></link>
+<link rel="stylesheet" href="css/skin.css" type="text/css"></link>
+<link rel="stylesheet" href="css/proto.menu.css" type="text/css"></link>
+<link rel="stylesheet" href="windowthemes/default.css" type="text/css"></link>
+<link rel="stylesheet" href="windowthemes/debug.css" type="text/css"></link>
+<script type="text/javascript" src="javascript/prototype-1.6.0.1.js"></script>
+<script type="text/javascript" src="javascript/menu.js"></script>
+<script type="text/javascript" src="javascript/context_menu.blind.js"></script>
+<script type="text/javascript" src="javascript/event-selectors.js"></script>
+<script type="text/javascript" src="javascript/scriptaculous.js"></script>
+<script type="text/javascript" src="javascript/sorc_client.js"></script>
+<script type="text/javascript" src="javascript/proto.menu.js"></script>
+<script type="text/javascript" src="javascript/window.js"> </script> 
+<script type="text/javascript" src="javascript/debug.js"> </script> 
+<script type="text/javascript" src="javascript/extended_debug.js"> </script> 
+<script type="text/javascript" src="javascript/readable.js"> </script> 
+
+
+
+<style type="text/css">
+  
+  #handlist {
+    position: absolute;
+    clear: both;
+    top: 1.5em;
+    left: 0.1em;
+    width: 97%;
+    bottom: 0.5em;
+    background: #d4d0c8;
+    border: 1px dotted #888;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    line-height: 1;
+  }
+</style>
+
+<script language="JavaScript" type="text/javascript">
+// <![CDATA[
+
+Element.addMethods({
+  findParentOfClass: function(element, classname) {
+    var toreturn = element;
+    while ((!toreturn.hasClassName(classname)) && (toreturn != document))
+      toreturn = toreturn.parentNode;
+    return toreturn;
+  },
+
+  cardAttributeAJAX: function(element, params, callback) {
+    var action = new Array();
+    action[0] = new Object();
+    action[0].command = "cardAttribute";
+    action[0].params = params;
+    debug(Readable.toReadable(action));
+    new Ajax.Request("blindrespond.php", {
+      method: "post",
+      parameters: {
+        actions: Object.toJSON(action)
+      },
+      onSuccess: function(transport) {
+        var response = transport.responseText.evalJSON();
+        debug("Response: " + Readable.toReadable(response[0]));
+        debug("Response: " + Readable.toReadable(response[0].params.properties));
+        if(response[0].applied) {
+          for (property in response[0].params.properties) {
+            $(response[0].params.card_id)[property] = response[0].params.properties[property];
+            current_game.prepareCard($(response[0].params.card_id));
+          }
+        }
+      }
+    });
+  },
+  
+  cardMoveAJAX: function(element, params, callback) {
+    var action = new Array();
+    action[0] = new Object();
+    action[0].command = "cardMove";
+    action[0].params = params;
+    debug(Readable.toReadable(action));
+  
+    new Ajax.Request("blindrespond.php", {
+      method: "post",
+      parameters: {
+        actions: Object.toJSON(action)
+      },
+      onSuccess: function(transport) {
+        var response = transport.responseText.evalJSON();
+        if (response[0].applied) {
+          current_game.moveCard($(response[0].params.card_id), response[0].params.from, response[0].params.to, response[0].params.x, response[0].params.y, response[0].params.morphed);
+        }
+      }
+    });
+  },
+  
+  cardRepositionAJAX: function(element, params, callback) {
+    var action = new Array();
+    action[0] = new Object();
+    action[0].command = "cardMove";
+    action[0].params = params;
+    debug(Readable.toReadable(action));
+    
+    new Ajax.Request("blindrespond.php", {
+      method: "post",
+      parameters: {
+        actions: Object.toJSON(action)
+      },
+      onSuccess: function(transport) {
+        var response = transport.responseText.evalJSON();
+        if (response[0].applied) {
+          $(response[0].params.card_id).style.top = response[0].params.top + "px";
+          $(response[0].params.card_id).style.left = response[0].params.left + "px";
+        }
+      }
+    });
+  }
+  
+});
+  
+
+var current_game = new Sorcerer_game();
+
+var Rules = {
+  
+  '.card': function(element) {
+    element.offTable = "false";
+    new Draggable(element, {
+      scroll: window,
+      ghosting: true,
+      snap: [25,25],
+      revert: true,
+      reverteffect: function(element, top_offset, left_offset) {
+        new Effect.MoveBy(element, -top_offset, -left_offset, {duration:0});
+      },
+      change: function(draggable) {
+        draggable.originalZ = draggable.element.oldZIndex = (draggable.element.offsetTop / 25);
+      }
+    });
+  },
+  
+  '.card:dblclick': function(element) {
+    if (!element.findParentOfClass) 
+      Element.extend(element);
+    var root_card = element.findParentOfClass('card');
+    if(root_card.istapped) {
+      root_card.cardAttributeAJAX({card_id: root_card.id, properties: {istapped: false}});
+      root_card.cardAttributeAJAX({card_id: root_card.id, properties: {isattacking: false}});
+    } else {
+      root_card.cardAttributeAJAX({card_id: root_card.id, properties: {istapped: true}});
+    }
+    
+  },
+  
+  '.card:mouseover': function(element) {
+    element.oldZIndex = element.style.zIndex;
+    element.style.zIndex = 999;
+  },
+  
+  '.card:mouseout': function(element) {
+    element.style.zIndex = element.oldZIndex;
+  },
+  
+  '.card span:mouseover': function(element) {
+    element.parentNode.oldZIndex = element.parentNode.style.zIndex;
+    element.parentNode.style.zIndex = 999;
+  },
+  
+  '.card span:mouseout': function(element) {
+    element.parentNode.style.zIndex = element.parentNode.oldZIndex;
+  },
+  
+  '#handlist': function(element) {
+    Sortable.create(element, {
+      tag: 'li',
+      dragOnEmpty: 'true',
+      ghosting: true,
+      revert: true,
+      reverteffect: function(element, top_offset, left_offset) {
+        new Effect.MoveBy(element, -top_offset, -left_offset, {duration:0});
+      },
+      constraint: ''
+    });
+  },
+  
+  '.droptarget': function(element, target) {
+    Element.extend(element);
+    Droppables.add(element, {
+      accept: ['card', 'handcard'], 
+      onDrop: function(element, target, event) {
+        if (element.location != target.id)
+          if(event.shiftKey)
+            element.cardMoveAJAX({card_id: element.id, from: element.location, to: target.id, x: event.clientX, y: event.clientY, morphed: true}); //Move the card morphed
+          else
+            element.cardMoveAJAX({card_id: element.id, from: element.location, to: target.id, x: event.clientX, y: event.clientY, morphed: false}); //Move the card morphed
+        else if((element.location =="table") && (target.id == "table"))
+          element.cardRepositionAJAX({card_id: element.id, top: element.offsetTop, left: element.offsetLeft});
+      }
+    }); 
+  },
+  
+  '.button:click': function(element) {
+    alert("You clicked " + element.id + "!");
+  },
+  
+  '#spawn1:click': function(element) {
+    card_info = {
+      card_name: "Troll Ascetic",
+      card_cost: "1GG",
+      card_ruletext: "Troll Ascetic can't be the target of spells or abilities your opponents control. 1G: Regenerate Troll Ascetic. (The next time this creature would be destroyed this turn, it isn't. Instead tap it, remove all damage from it, and remove it from combat.)",
+      card_type: "Creature - Troll Shaman",
+      card_atk: "3",
+      card_def: "2",
+      gatherer_id: "130498"
+    };
+    current_game.spawnCard(card_info);
+  },
+  
+  '#spawn2:click': function(element) {
+    card_info = {
+      card_name: "Aegis of the Meek",
+      card_cost: "3",
+      card_ruletext: "1, T: : Target 1/1 creature gets +1/+2 until end of turn.",
+      card_type: "Artifact",
+      card_atk: '',
+      card_def: '',
+      gatherer_id: "2393"
+    };
+    current_game.spawnCard(card_info);
+  },
+  
+  '#spawn3:click': function(element) {
+    card_info = {
+      card_name: "Shielding Plax",
+      card_cost: "2{G/U}",
+      card_ruletext: "Enchant creature. When Shielding Plax comes into play, draw a card. Enchanted creature can't be the target of spells or abilities your opponents control.",
+      card_type: "Enchantment - Aura",
+      card_atk: '',
+      card_def: '',
+      gatherer_id: "2393"
+    };
+    current_game.spawnCard(card_info);
+  },
+  
+  '#showdebug:click': function(element) {
+    showExtendedDebug();
+  }
+} 
+
+
+
+document.observe('dom:loaded', function() {
+  document.body.card_rmenuhandler = new Proto.Menu({
+    selector: '.card',
+    className: 'menu desktop',
+    menuItems: cardRMenuItems,
+    beforeShow: function(event, pmenu) {
+      //alert(Readable.toReadable($('rmenu_tap_untap').readAttribute("title_function")));
+      var items = pmenu.container.getElementsByClassName('rmenuitem');
+      for (var i=0; i<items.length; i++) {
+        if (Object.isFunction(items[i]._title_function)) {
+          items[i].title = items[i]._title_function(event);
+          items[i].update(items[i]._title_function(event));
+        }
+        if (Object.isFunction(items[i]._id_function))
+          items[i].id = items[i]._id_function(event);
+        if (Object.isFunction(items[i]._disabled_function))
+          if (items[i]._disabled_function(event)) {
+            items[i].removeClassName('enabled');
+            items[i].addClassName('disabled');
+          } else {
+            items[i].removeClassName('disabled');
+            items[i].addClassName('enabled');
+          } 
+      }
+    }
+  });
+  EventSelectors.start(Rules);
+  sfHover();
+})
+
+  // ]]>
+</script>
+
+
+</head>
+<body>
+<div id="menubar">
+  <ul id="nav">
+    <li class="menufile"><a href="#" id="stupid">File</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_newgame">New Game...</a></li>
+      <li class="menuitem"><a href="#" id="menu_deck_editor">Deck Editor...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_sealed_deck_generator">Sealed Deck Generator...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_save_message_window">Save Message Window Buffer...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="Exit">Exit</a></li>
+      </ul>
+    </li>
+    <li class="menugame"><a href="#">Game</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_set_life">Set Life...</a></li>
+      <li class="menuitem"><a href="#" id="menu_next_phase">Next Phase</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_increment_life">Increment Life</a></li>
+      <li class="menuitem"><a href="#" id="menu_decrement_life">Decrement Life</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_increment_turn">Increment Turn</a></li>
+      <li class="menuitem"><a href="#" id="menu_decrement_turn">Decrement Turn</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_untap_step">Declare Untap Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_upkeep_step">Declare Upkeep Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_draw_step">Declare Draw Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_main_phase">Declare Main Phase</a></li>
+      <li class="menuitem"><a href="#" id="menu_combat_phase">Declare Combat Phase</a></li>
+      <li class="menuitem"><a href="#" id="menu_end_phase">Declare End of Turn Phase</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_clear_buffer">Clear Buffer</a></li>
+      </ul>
+    </li>
+    <li class="menuaction"><a href="#">Action</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_draw_card">Draw Card</a></li>
+      <li class="menuitem"><a href="#" id="menu_untap_permanents">Untap My Permanents</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_create_card">Create Card...</a></li>
+      <li class="menuitem"><a href="#" class="menuitem" id="menu_discard_random_card">Bury Random Card From Hand</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_flip_coin">Flip a Coin</a></li>
+      <li class="menuitem"><a href="#" id="menu_roll_die">Roll a Die</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_shuffle_library">Shuffle Library</a></li>
+      <li>-----------------</li>
+      <li><a href="#" class="menu_haschild">Library &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_grave">Move Library to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_hand">Move Library to Hand</a>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_rfg">Remove Library from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Graveyard &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_lib">Move Graveyard to Library</a>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_hand">Move Graveyard to Hand</a>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_rfg">Remove Graveyard from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Hand &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_Library">Move Hand to Library</a>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_grave">Move Hand to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_rfg">Remove Hand from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Remove from Game &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_rfg_to_lib">Move RFG to Library</a>
+        <li class="submenuitem"><a href="#" id="Move_RFG_to_Graveyard">Move RFG to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="Move_RFG_to_Hand">Move RFG to Hand</a>
+        </ul>
+      </li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_clear_message_window">Clear Buffer</a></li>
+      </ul>
+    </li>
+    <li class="menuview"><a href="#">View</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_view_my_grave">My Graveyard...</a></li>
+      <li class="menuitem"><a href="#" id="menu_view_other_grave">Opponent's Graveyard...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_my_rfg">My Removed Cards...</a></li>
+      <li class="menuitem"><a href="#" id="menu_view_other_rfg">Opponent's Removed Cards...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_my_lib">My Library...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_top_of_lib">Top Cards Of My Library...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_game_status">Game Status...</a></li>
+      </ul>
+    </li>
+    <li class="menushow"><a href="#">Show</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_reveal_hand">My Hand</a></li>
+      <li class="menuitem"><a href="#" id="menu_reveal_library">My Entire Library</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_reveal_random_hand_card">Random card from Hand</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_reveal_top_lib_card">Top card from my Library</a></li>
+      </ul>
+    </li>
+    <li class="menucommunications"><a href="#">Communications</a>
+      <ul>
+      <li class="menuitem"><a href="#">To Add if wanted</a></li>
+      </ul>
+    </li>
+    <li class="menuoptions"><a href="#">Options</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_preferences">Preferences...</a></li>
+      <li class="menuitem"><a href="#" id="menu_set_name">Set Name...</a></li>
+      </ul>
+    </li>
+    <li class="menuhelp"><a href="#">Help</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_help">Help...</a></li>
+      <li class="menuitem"><a href="#" id="menu_about">About...</a></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div id="toolbar">
+  <div class="button" id="btn_newgame" title="New Game"></div>
+  <div class="button" id="btn_deckeditor" title="Deck Editor"></div>
+  <div class="button" id="btn_untapall" title="Untap All"></div>
+  <div class="button" id="btn_drawcard" title="Draw Card"></div>
+  <div class="spacer"></div>
+  <div class="button" id="btn_phase_untap" title="Untap Phase"></div>
+  <div class="button" id="btn_phase_upkeep" title="Upkeep Phase"></div>
+  <div class="button" id="btn_phase_draw" title="Draw Phase"></div>
+  <div class="button" id="btn_phase_main" title="Main Phase"></div>
+  <div class="button" id="btn_phase_attack" title="Attack Phase"></div>
+  <div class="button" id="btn_phase_discard" title="Discard Phase"></div>
+  <div class="button" id="btn_passturn" title="Pass the Turn"></div>
+  <div class="spacer"></div>
+  <div class="button" id="btn_setlife" title="Set life..."></div>
+  <div class="button" id="btn_decrementlife" title="Decrement Life"></div>
+  <div class="button" id="btn_incrementlife" title="Increment Life"></div>
+  <div class="button" id="btn_ping" title="Ping"></div>
+</div>
+<div id="targets">
+  <div class="halfspacer"></div>
+  <div class="button" id="btn_target_lib" title="Drop target: Library"></div>
+  <div class="button droptarget" id="btn_target_grave" title="Drop target: Graveyard"></div>
+  <div class="button droptarget" id="btn_target_rfg" title="Drop Target: Remove From Game"></div>
+</div>
+<div id="table" class="droptarget">
+  <span id="table_out">Table</span>
+  <button id="spawn1">Spawn Troll Ascetic</button>
+  <button id="spawn2">Spawn Aegis of the Meek</button>
+  <button id="spawn3">Spawn Shielding Plax</button>
+  <button id="showdebug">Open Debug</button>
+  <!-- <div class="card">Card8</div>
+  <div class="card">Card7</div>
+  <div class="card">Card6</div>
+  <div class="card">Card5</div>
+  <div class="card">Card4</div>
+  <div class="card">Card3</div>
+  <div class="card">Card2</div>
+  <div class="card">Card1</div> -->
+</div>
+<div id="hand">
+  My Hand
+  <ul id="handlist" class="droptarget">
+  </ul>
+</div>
+<div id="players">Players</div>
+<div id="chat">
+  <textarea id="chat_output" disabled></textarea>
+  <input type="text" id="chat_input"></input>
+</div>
+
+</body>
+</html>
+

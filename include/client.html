@@ -1,0 +1,531 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+  "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html>
+<head>
+<title>Testbed</title>
+<link rel="stylesheet" href="css/layout.css" type="text/css"></link>
+<link rel="stylesheet" href="css/menu.css" type="text/css"></link>
+<link rel="stylesheet" href="css/skin.css" type="text/css"></link>
+<link rel="stylesheet" href="css/proto.menu.css" type="text/css"></link>
+<link rel="stylesheet" href="windowthemes/default.css" type="text/css"></link>
+<link rel="stylesheet" href="windowthemes/alert.css" type="text/css"></link>
+<link rel="stylesheet" href="windowthemes/debug.css" type="text/css"></link>
+<script type="text/javascript" src="javascript/prototype-1.6.0.1.js"></script>
+<script type="text/javascript" src="javascript/menu.js"></script>
+<script type="text/javascript" src="javascript/context_menu.dynamic.js"></script>
+<script type="text/javascript" src="javascript/event-selectors.js"></script>
+<script type="text/javascript" src="javascript/scriptaculous.js"></script>
+<script type="text/javascript" src="javascript/sorc_client.js"></script>
+<script type="text/javascript" src="javascript/proto.menu.js"></script>
+<script type="text/javascript" src="javascript/window.js"></script> 
+
+<script type="text/javascript" src="javascript/debug.js"></script> 
+<script type="text/javascript" src="javascript/extended_debug.js"></script> 
+<script type="text/javascript" src="javascript/readable.js"></script> 
+
+
+
+<style type="text/css">
+  
+  #handlist {
+    position: absolute;
+    clear: both;
+    top: 1.5em;
+    left: 0.1em;
+    width: 97%;
+    bottom: 0.5em;
+    background: #d4d0c8;
+    border: 1px dotted #888;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    line-height: 1;
+  }
+</style>
+
+<script language="JavaScript" type="text/javascript">
+// <![CDATA[
+
+Element.addMethods({
+  findParentOfClass: function(element, classname) {
+    var toreturn = element;
+    while ((!toreturn.hasClassName(classname)) && (toreturn != document))
+      toreturn = toreturn.parentNode;
+    return toreturn;
+  },
+
+  responselessAJAX: function(element, command, paramarray, gameclass) {
+    debug("responselessAJAX: Sending " + Readable.toReadable(command));
+    
+    if (Object.isUndefined(gameclass))
+      gameclass = current_game;
+    
+    var actions = new Array();
+    if (Object.isUndefined(paramarray[0])) {
+      debug("responselessAJAX: paramarray[0] does not exist");
+      return false;
+    }
+    
+    for (i = 0; i < paramarray.length; i++) {
+      actions[i] = new Object();
+      actions[i].command = command;
+      actions[i].params = paramarray[i];
+    }
+    
+    debug(Readable.toReadable(actions));
+    new Ajax.Request("respond.php", {
+      method: "post",
+      parameters: {
+        actions: Object.toJSON(actions),
+        gameid: gameclass.gameid
+      },
+      onSuccess: function(transport) {
+        var i = 0;
+        var responses = transport.responseText.evalJSON();
+        //debug("Response: " + Readable.toReadable(responses));
+        for (i = 0; i < responses.length; i++) {
+          if(!responses[i].applied) {
+            debug("responselessAJAX: Command " + i + " not applied!");
+            debug("responselessAJAX: Syncing game...");
+            Element.responsefulAJAX($('table'), "syncGame", new Array(Object.keys(current_game.cardcache)), current_game.gameid, function(transport) {
+              var response = transport.responseText.evalJSON();
+              gameclass.syncGame(response[0]['gamestate']);
+            });
+          }
+        }
+      }
+    });
+  },
+  
+  responsefulAJAX: function(element, command, paramarray, callback, gameclass) {
+    var actions = new Array();
+    
+    if (Object.isUndefined(gameclass))
+      gameclass = current_game;
+    
+    if (Object.isUndefined(paramarray[0])) {
+      debug("responsefulAJAX: paramarray[0] does not exist");
+      return false;
+    }
+    
+    for (i = 0; i < paramarray.length; i++) {
+      actions[i] = new Object();
+      actions[i].command = command;
+      actions[i].params = paramarray[i];
+    }
+    
+    debug(Readable.toReadable(actions));
+    new Ajax.Request("respond.php", {
+      method: "post",
+      parameters: {
+        actions: Object.toJSON(actions),
+        gameid: gameclass.gameid
+      },
+      onSuccess: callback
+    });
+  }
+});
+  
+matched = /[\\?&]gameid=([^&#]*)/.exec(window.location.href);
+if (matched == null)
+  gameid = null;
+else
+  gameid = matched[1];
+var current_game = new Sorcerer_game(gameid);
+
+var Rules = {
+  
+  '.card': function(element) {
+    element.offTable = "false";
+    new Draggable(element, {
+      scroll: window,
+      snap: [25,25],
+      revert: function(element) {
+				//$('table_out').innerHTML = "Revert set to " + element.offTable;
+				if(element.offTable == "false")
+				  return false;
+				return true;
+			},
+      reverteffect: function(element, top_offset, left_offset) {
+        new Effect.MoveBy(element, -top_offset, -left_offset, {duration:0});
+      },
+      change: function(draggable) {
+			  draggable.originalZ = draggable.element.oldZIndex = (draggable.element.offsetTop / 25);
+			  $left = draggable.element.offsetLeft;
+				$top = draggable.element.offsetTop;
+				if (($left < 0) || ($top < 0) || ($left > $('table').offsetWidth) || ($top > $('table').offsetHeight))
+				  draggable.element.offTable = "true";
+				else
+				  draggable.element.offTable = "false";
+			  //$('table_out').innerHTML = $left + " " + $top;
+			}
+    });
+  },
+  
+  '.card:dblclick': function(element) {
+    if (!element.findParentOfClass) 
+      Element.extend(element);
+    var root_card = element.findParentOfClass('card');
+    if(current_game.targets[root_card.location][root_card.id].istapped) {
+      root_card.responselessAJAX("cardAttributes", new Array({card_id: root_card.id.replace(/[^0-9]/g, ''), attributes: {istapped: false, isattacking: false}}));
+      current_game.setAttributes(root_card.location, root_card.id, {istapped: false, isattacking: false});
+    } else {
+      root_card.responselessAJAX("cardAttributes", new Array({card_id: root_card.id.replace(/[^0-9]/g, ''), attributes: {istapped: true}}));
+      current_game.setAttributes(root_card.location, root_card.id, {istapped: true});
+    }
+    current_game.prepareCard(root_card);
+  },
+  
+  '.card:mouseover': function(element) {
+    element.oldZIndex = element.style.zIndex;
+    element.style.zIndex = 999;
+  },
+  
+  '.card:mouseout': function(element) {
+    element.style.zIndex = element.oldZIndex;
+  },
+  
+  '.card span:mouseover': function(element) {
+    element.parentNode.oldZIndex = element.parentNode.style.zIndex;
+    element.parentNode.style.zIndex = 999;
+  },
+  
+  '.card span:mouseout': function(element) {
+    element.parentNode.style.zIndex = element.parentNode.oldZIndex;
+  },
+  
+  '.droptarget': function(element, target) {
+    Element.extend(element);
+    Droppables.add(element, {
+      accept: ['card', 'handcard'], 
+      onDrop: function(element, target, event) {
+        target.lastdrop = element.id;
+        if (element.location != target.location_name) {
+          if(event.shiftKey) {
+            element.responselessAJAX("moveCard", new Array({card_id: element.id.replace(/[^0-9]/g, ''), to: target.location_name, x: (event.clientX - Element.cumulativeOffset($('table')).left), y: (event.clientY - Element.cumulativeOffset($('table')).top), stackorder: "TOP", morphed: true})); //Move the card morphed
+            current_game.moveCard(element, target.location_name, (event.clientX - Element.cumulativeOffset($('table')).left), (event.clientY - Element.cumulativeOffset($('table')).top), true);
+          } else {
+            element.responselessAJAX("moveCard", new Array({card_id: element.id.replace(/[^0-9]/g, ''), to: target.location_name, x: (event.clientX - Element.cumulativeOffset($('table')).left), y: (event.clientY - Element.cumulativeOffset($('table')).top), stackorder: "TOP", morphed: false})); //Move the card unmorphed
+            current_game.moveCard(element, target.location_name, (event.clientX - Element.cumulativeOffset($('table')).left), (event.clientY - Element.cumulativeOffset($('table')).top), false);
+          }
+        } else if((element.location == "table") && (target.id == "table")) {
+          element.responselessAJAX("moveCard", new Array({card_id: element.id.replace(/[^0-9]/g, ''), to: target.location_name, x: element.offsetLeft, y: element.offsetTop, stackorder: "TOP", morphed: false}));
+          current_game.setAttributes(element.location, element.id, {x: element.offsetLeft, y: element.offsetTop});
+          current_game.prepareCard(element);
+        }
+      }
+    }); 
+  },
+  
+  '#handlist': function(element) { //the Sortable creation code needs to be after the Droppable code, or it gets overwritten
+    Sortable.create(element, {
+      tag: 'li',
+      dragOnEmpty: 'true',
+      reverteffect: function(element, top_offset, left_offset) {
+        new Effect.MoveBy(element, -top_offset, -left_offset, {duration:0});
+      },
+      onUpdate: function(target) {
+        debug("onUpdate: " + target.id + " " + target.lastdrop);
+      },
+      constraint: ''
+    });
+  },
+  
+  '.button:click': function(element) {
+    switch (element.id) {
+      case "btn_drawcard":
+        element.responsefulAJAX("drawCard", new Array(''), function(transport) {
+          var response = transport.responseText.evalJSON();
+          current_game.cacheAdd(response[0]['cardinfo']);
+          current_game.addCard(response[0]['dbrow']);
+          current_game.syncDOM(new Array(response[0]['dbrow']['location']), new Array('card_' + response[0]['dbrow']['card_id']));
+        });
+        break;
+      case "btn_sync":
+        Dialog.info("Syncing game...", {width: 100, height: 50, showProgress: true, zIndex: 10000});
+        element.responsefulAJAX("syncGame", new Array(Object.keys(current_game.cardcache)), function(transport) {
+          var response = transport.responseText.evalJSON();
+          current_game.syncGame(response[0]['gamestate']);
+          Dialog.closeInfo();
+        });
+        break;
+      case "btn_newgame":
+        current_game.removeAllCards();
+      default:
+        alert("You clicked " + element.id + "!");
+        break;
+    }
+  },
+  
+  '#spawn1:click': function(element) {
+    card_info = {
+      name: "Troll Ascetic",
+      cost: "1GG",
+      rules: "Troll Ascetic can't be the target of spells or abilities your opponents control. 1G: Regenerate Troll Ascetic. (The next time this creature would be destroyed this turn, it isn't. Instead tap it, remove all damage from it, and remove it from combat.)",
+      type: "Creature - Troll Shaman",
+      power: "3",
+      toughness: "2",
+      gatherer_id: "130498",
+      refhash: "VHJvbGwgQXNjZXRpYy4xMzA0OTg="
+    };
+    current_game.cacheAdd(card_info);
+    current_game.spawnFakeCard("VHJvbGwgQXNjZXRpYy4xMzA0OTg=");
+  },
+  
+  '#spawn2:click': function(element) {
+    card_info = {
+      name: "Aegis of the Meek",
+      cost: "3",
+      rules: "1, {T}: Target 1/1 creature gets +1/+2 until end of turn.",
+      type: "Artifact",
+      power: '0',
+      toughness: '0',
+      gatherer_id: "2393",
+      refhash: "QWVnaXMgb2YgdGhlIE1lZWsuMjM5Mw=="
+    };
+    current_game.cacheAdd(card_info);
+    current_game.spawnFakeCard("QWVnaXMgb2YgdGhlIE1lZWsuMjM5Mw==");
+  },
+  
+  '#spawn3:click': function(element) {
+    card_info = {
+      name: "Shielding Plax",
+      cost: "2(G/U)",
+      rules: "Enchant creature. When Shielding Plax comes into play, draw a card. Enchanted creature can't be the target of spells or abilities your opponents control.",
+      type: "Enchantment - Aura",
+      power: '0',
+      toughness: '0',
+      gatherer_id: "2393",
+      refhash: "U2hpZWxkaW5nIFBsYXguOTcwODQ="
+    };
+    current_game.cacheAdd(card_info);
+    current_game.spawnFakeCard("U2hpZWxkaW5nIFBsYXguOTcwODQ=");
+  },
+  
+  '#showdebug:click': function(element) {
+    showExtendedDebug();
+    debug("Game ID is: " + current_game.gameid);
+  }
+} 
+
+
+
+document.observe('dom:loaded', function() {
+  if (current_game.valid == false)
+    Dialog.info("Syncing game...", {width: 100, height: 50, showProgress: true, zIndex: 10000});
+
+  document.body.card_rmenuhandler = new Proto.Menu({
+    selector: '.card',
+    className: 'menu desktop',
+    menuItems: cardRMenuItems,
+    beforeShow: function(event, pmenu) {
+      //alert(Readable.toReadable($('rmenu_tap_untap').readAttribute("title_function")));
+      var items = pmenu.container.getElementsByClassName('rmenuitem');
+      for (var i=0; i<items.length; i++) {
+        if (Object.isFunction(items[i]._title_function)) {
+          items[i].title = items[i]._title_function(event);
+          items[i].update(items[i]._title_function(event));
+        }
+        if (Object.isFunction(items[i]._id_function))
+          items[i].id = items[i]._id_function(event);
+        if (Object.isFunction(items[i]._disabled_function))
+          if (items[i]._disabled_function(event)) {
+            items[i].removeClassName('enabled');
+            items[i].addClassName('disabled');
+          } else {
+            items[i].removeClassName('disabled');
+            items[i].addClassName('enabled');
+          } 
+      }
+    }
+  });
+  EventSelectors.start(Rules);
+  sfHover();
+})
+
+  // ]]>
+</script>
+
+
+</head>
+<body>
+<div id="menubar">
+  <ul id="nav">
+    <li class="menufile"><a href="#" id="stupid">File</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_newgame">New Game...</a></li>
+      <li class="menuitem"><a href="#" id="menu_deck_editor">Deck Editor...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_sealed_deck_generator">Sealed Deck Generator...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_save_message_window">Save Message Window Buffer...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="Exit">Exit</a></li>
+      </ul>
+    </li>
+    <li class="menugame"><a href="#">Game</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_set_life">Set Life...</a></li>
+      <li class="menuitem"><a href="#" id="menu_next_phase">Next Phase</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_increment_life">Increment Life</a></li>
+      <li class="menuitem"><a href="#" id="menu_decrement_life">Decrement Life</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_increment_turn">Increment Turn</a></li>
+      <li class="menuitem"><a href="#" id="menu_decrement_turn">Decrement Turn</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_untap_step">Declare Untap Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_upkeep_step">Declare Upkeep Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_draw_step">Declare Draw Step</a></li>
+      <li class="menuitem"><a href="#" id="menu_main_phase">Declare Main Phase</a></li>
+      <li class="menuitem"><a href="#" id="menu_combat_phase">Declare Combat Phase</a></li>
+      <li class="menuitem"><a href="#" id="menu_end_phase">Declare End of Turn Phase</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_clear_buffer">Clear Buffer</a></li>
+      </ul>
+    </li>
+    <li class="menuaction"><a href="#">Action</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_draw_card">Draw Card</a></li>
+      <li class="menuitem"><a href="#" id="menu_untap_permanents">Untap My Permanents</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_create_card">Create Card...</a></li>
+      <li class="menuitem"><a href="#" class="menuitem" id="menu_discard_random_card">Bury Random Card From Hand</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_flip_coin">Flip a Coin</a></li>
+      <li class="menuitem"><a href="#" id="menu_roll_die">Roll a Die</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_shuffle_library">Shuffle Library</a></li>
+      <li>-----------------</li>
+      <li><a href="#" class="menu_haschild">Library &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_grave">Move Library to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_hand">Move Library to Hand</a>
+        <li class="submenuitem"><a href="#" id="menu_move_lib_to_rfg">Remove Library from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Graveyard &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_lib">Move Graveyard to Library</a>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_hand">Move Graveyard to Hand</a>
+        <li class="submenuitem"><a href="#" id="menu_move_grave_to_rfg">Remove Graveyard from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Hand &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_Library">Move Hand to Library</a>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_grave">Move Hand to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="menu_move_hand_to_rfg">Remove Hand from Game</a>
+        </ul>
+      </li>
+      <li><a href="#" class="menu_haschild">Remove from Game &gt;</a>
+        <ul>
+        <li class="submenuitem"><a href="#" id="menu_move_rfg_to_lib">Move RFG to Library</a>
+        <li class="submenuitem"><a href="#" id="Move_RFG_to_Graveyard">Move RFG to Graveyard</a>
+        <li class="submenuitem"><a href="#" id="Move_RFG_to_Hand">Move RFG to Hand</a>
+        </ul>
+      </li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_clear_message_window">Clear Buffer</a></li>
+      </ul>
+    </li>
+    <li class="menuview"><a href="#">View</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_view_my_grave">My Graveyard...</a></li>
+      <li class="menuitem"><a href="#" id="menu_view_other_grave">Opponent's Graveyard...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_my_rfg">My Removed Cards...</a></li>
+      <li class="menuitem"><a href="#" id="menu_view_other_rfg">Opponent's Removed Cards...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_my_lib">My Library...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_top_of_lib">Top Cards Of My Library...</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_view_game_status">Game Status...</a></li>
+      </ul>
+    </li>
+    <li class="menushow"><a href="#">Show</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_reveal_hand">My Hand</a></li>
+      <li class="menuitem"><a href="#" id="menu_reveal_library">My Entire Library</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_reveal_random_hand_card">Random card from Hand</a></li>
+      <li>-----------------</li>
+      <li class="menuitem"><a href="#" id="menu_reveal_top_lib_card">Top card from my Library</a></li>
+      </ul>
+    </li>
+    <li class="menucommunications"><a href="#">Communications</a>
+      <ul>
+      <li class="menuitem"><a href="#">To Add if wanted</a></li>
+      </ul>
+    </li>
+    <li class="menuoptions"><a href="#">Options</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_preferences">Preferences...</a></li>
+      <li class="menuitem"><a href="#" id="menu_set_name">Set Name...</a></li>
+      </ul>
+    </li>
+    <li class="menuhelp"><a href="#">Help</a>
+      <ul>
+      <li class="menuitem"><a href="#" id="menu_help">Help...</a></li>
+      <li class="menuitem"><a href="#" id="menu_about">About...</a></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div id="toolbar">
+  <div class="button" id="btn_newgame" title="New Game"></div>
+  <div class="button" id="btn_sync" title="Sync">Sync</div>
+  <div class="button" id="btn_untapall" title="Untap All"></div>
+  <div class="button" id="btn_drawcard" title="Draw Card">Draw</div>
+  <div class="spacer"></div>
+  <div class="button" id="btn_phase_untap" title="Untap Phase"></div>
+  <div class="button" id="btn_phase_upkeep" title="Upkeep Phase"></div>
+  <div class="button" id="btn_phase_draw" title="Draw Phase"></div>
+  <div class="button" id="btn_phase_main" title="Main Phase"></div>
+  <div class="button" id="btn_phase_attack" title="Attack Phase"></div>
+  <div class="button" id="btn_phase_discard" title="Discard Phase"></div>
+  <div class="button" id="btn_passturn" title="Pass the Turn"></div>
+  <div class="spacer"></div>
+  <div class="button" id="btn_setlife" title="Set life..."></div>
+  <div class="button" id="btn_decrementlife" title="Decrement Life"></div>
+  <div class="button" id="btn_incrementlife" title="Increment Life"></div>
+  <div class="button" id="btn_ping" title="Ping"></div>
+</div>
+<div id="targets">
+  <div class="halfspacer"></div>
+  <div class="button droptarget" id="btn_target_lib" title="Drop target: Library"></div>
+  <div class="button droptarget" id="btn_target_grave" title="Drop target: Graveyard"></div>
+  <div class="button droptarget" id="btn_target_rfg" title="Drop Target: Remove From Game"></div>
+</div>
+<div id="table" class="droptarget">
+  <span id="table_out">Table</span>
+  <button id="spawn1">Spawn Troll Ascetic</button>
+  <button id="spawn2">Spawn Aegis of the Meek</button>
+  <button id="spawn3">Spawn Shielding Plax</button>
+  <button id="showdebug">Open Debug</button>
+  <!-- <div class="card">Card8</div>
+  <div class="card">Card7</div>
+  <div class="card">Card6</div>
+  <div class="card">Card5</div>
+  <div class="card">Card4</div>
+  <div class="card">Card3</div>
+  <div class="card">Card2</div>
+  <div class="card">Card1</div> -->
+</div>
+<div id="hand">
+  My Hand
+  <ul id="handlist" class="droptarget">
+  </ul>
+</div>
+<div id="players">Players</div>
+<div id="chat">
+  <textarea id="chat_output" disabled></textarea>
+  <input type="text" id="chat_input"></input>
+</div>
+
+</body>
+</html>
+

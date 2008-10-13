@@ -407,11 +407,11 @@ var Draggable = Class.create({
     if(this.options.ghosting) {
       if (!this.element._originallyAbsolute)
         Position.relativize(this.element);
-      delete this.element._originallyAbsolute;
+      this.element._originallyAbsolute = false;
       Element.remove(this._clone);
       this._clone = null;
     }
-
+    
     var dropped = false; 
     if(success) { 
       dropped = Droppables.fire(event, this.element); 

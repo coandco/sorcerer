@@ -4,82 +4,220 @@
 <html>
 <head>
 <title>Testbed</title>
-<link rel="stylesheet" href="layout.css" type="text/css"></link>
-<link rel="stylesheet" href="menu.css" type="text/css"></link>
-<script type="text/javascript" src="javascript/menu.js"></script>
+<link rel="stylesheet" href="css/layout.css" type="text/css" />
+<link rel="stylesheet" href="css/menu.css" type="text/css" />
+<link rel="stylesheet" href="css/skin.css" type="text/css" />
+<link rel="stylesheet" href="css/proto.menu.css" type="text/css" />
 <script type="text/javascript" src="javascript/prototype-1.6.0.1.js"></script>
+<script type="text/javascript" src="javascript/menu.js"></script>
+<script type="text/javascript" src="javascript/context_menu.js"></script>
 <script type="text/javascript" src="javascript/event-selectors.js"></script>
 <script type="text/javascript" src="javascript/scriptaculous.js"></script>
+<script type="text/javascript" src="javascript/sorc_client.js"></script>
+<script type="text/javascript" src="javascript/proto.menu.js"></script>
+<script type="text/javascript" src="javascript/readable.js"></script>
+
 
 
 <style type="text/css">
-
-.card {
-  position: absolute;
-  width: 3em;
-	height: 3em;
-	border: solid 1px black;
-	background: red;
-}
-
+	
+	#handlist {
+	  position: absolute;
+		clear: both;
+		top: 1.5em;
+		left: 0.1em;
+  	width: 97%;
+  	bottom: 0.5em;
+  	background: #d4d0c8;
+  	border: 1px dotted #888;
+	  padding: 0;
+  	margin: 0;
+  	list-style: none;
+  	line-height: 1;
+	}
 </style>
 
 <script language="JavaScript" type="text/javascript">
 // <![CDATA[
 
+Element.addMethods({
+  findParentOfClass: function(element, classname) {
+	  var toreturn = element;
+		while ((!toreturn.hasClassName(classname)) && (toreturn != document))
+		  toreturn = toreturn.parentNode;
+		return toreturn;
+	}
+});
+
+var current_game = new Sorcerer_game(1);
+
 var Rules = {
+	
   '.card': function(element) {
 	  element.offTable = "false";
 		new Draggable(element, {
 		  scroll: window,
 			snap: [25,25],
 			revert: function(element) {
-				$('table_out').innerHTML = "Revert for " + element.innerHTML + " set to " + element.offTable;
+				//$('table_out').innerHTML = "Revert set to " + element.offTable;
 				if(element.offTable == "false")
 				  return false;
 				return true;
 			},
 			change: function(draggable) {
+			  draggable.originalZ = draggable.element.oldZIndex = (draggable.element.offsetTop / 25);
 			  $left = draggable.element.offsetLeft;
 				$top = draggable.element.offsetTop;
 				if (($left < 0) || ($top < 0) || ($left > $('table').offsetWidth) || ($top > $('table').offsetHeight))
 				  draggable.element.offTable = "true";
 				else
 				  draggable.element.offTable = "false";
-			  $('table_out').innerHTML = $left + " " + $top;
+			  //$('table_out').innerHTML = $left + " " + $top;
 			}
 		});
 	},
 	
-	'.card:contextmenu': function(element) {
-	  alert("Class is " + element.className);
-		return false;
+	'.card:dblclick': function(element) {
+		if (!element.findParentOfClass) 
+		  Element.extend(element);
+		var root_card = element.findParentOfClass('card');
+		if(root_card.istapped) {
+		  root_card.istapped = false;
+			root_card.isattacking = false;
+		} else {
+		  root_card.istapped = true;
+			current_game.prepareCard(root_card);
+		}
+		
+	},
+	
+	'.card:mouseover': function(element) {
+	  element.oldZIndex = element.style.zIndex;
+		element.style.zIndex = 999;
+	},
+	
+	'.card:mouseout': function(element) {
+		element.style.zIndex = element.oldZIndex;
+	},
+	
+	'.card span:mouseover': function(element) {
+	  element.parentNode.oldZIndex = element.parentNode.style.zIndex;
+		element.parentNode.style.zIndex = 999;
+	},
+	
+	'.card span:mouseout': function(element) {
+		element.parentNode.style.zIndex = element.parentNode.oldZIndex;
+	},
+	
+	'#handlist': function(element) {
+	  Sortable.create(element, {
+		  tag: 'li',
+			dragOnEmpty: 'true',
+			constraint: ''
+		});
 	},
 	
 	'.droptarget': function(element, target) {
 	  Droppables.add(element, {
-		  accept: 'card', 
-			onDrop: function(element, target) {
-			  if (target.id != "table") {
-  			element.parentNode.removeChild(element);
-			  alert("Dropped " + element.className + " on " + target.id);
-				}			
+		  accept: ['card', 'handcard'], 
+			onDrop: function(element, target, event) {
+			  if (element.location != target.id)
+				  if(event.shiftKey)
+			      current_game.moveCard(element, element.location, target.id, event.clientX, event.clientY, true); //Move the card morphed
+					else
+					  current_game.moveCard(element, element.location, target.id, event.clientX, event.clientY, false);
 			}
 		}); 
 	},
 	
-	
 	'.button:click': function(element) {
 	  alert("You clicked " + element.id + "!");
-	}
+	},
+	
+  '#spawn1:click': function(element) {
+    card_info = {
+      name: "Troll Ascetic",
+      cost: "1GG",
+      rules: "Troll Ascetic can't be the target of spells or abilities your opponents control. 1G: Regenerate Troll Ascetic. (The next time this creature would be destroyed this turn, it isn't. Instead tap it, remove all damage from it, and remove it from combat.)",
+      type: "Creature - Troll Shaman",
+      power: "3",
+      toughness: "2",
+      gatherer_id: "130498",
+      refhash: "VHJvbGwgQXNjZXRpYy4xMzA0OTg="
+    };
+    current_game.cacheAdd(card_info);
+    current_game.spawnFakeCard("VHJvbGwgQXNjZXRpYy4xMzA0OTg=");
+  },
+  
+  '#spawn2:click': function(element) {
+    card_info = {
+      name: "Aegis of the Meek",
+      cost: "3",
+      rules: "1, {T}: Target 1/1 creature gets +1/+2 until end of turn.",
+      type: "Artifact",
+      power: '0',
+      toughness: '0',
+      gatherer_id: "2393",
+      refhash: "QWVnaXMgb2YgdGhlIE1lZWsuMjM5Mw=="
+    };
+    current_game.cacheAdd(card_info);
+    current_game.spawnFakeCard("QWVnaXMgb2YgdGhlIE1lZWsuMjM5Mw==");
+  },
+  
+  '#spawn3:click': function(element) {
+    card_info = {
+      name: "Shielding Plax",
+      cost: "2(G/U)",
+      rules: "Enchant creature. When Shielding Plax comes into play, draw a card. Enchanted creature can't be the target of spells or abilities your opponents control.",
+      type: "Enchantment - Aura",
+      power: '0',
+      toughness: '0',
+      gatherer_id: "2393",
+      refhash: "U2hpZWxkaW5nIFBsYXguOTcwODQ="
+    };
+    current_game.cacheAdd(card_info);
+    current_game.spawnFakeCard("U2hpZWxkaW5nIFBsYXguOTcwODQ=");
+  }
 } 
+
+
+
+document.observe('dom:loaded', function() {
+  document.body.card_rmenuhandler = new Proto.Menu({
+    selector: '.card',
+    className: 'menu desktop',
+    menuItems: cardRMenuItems,
+  	beforeShow: function(event, pmenu) {
+		  //alert(Readable.toReadable($('rmenu_tap_untap').readAttribute("title_function")));
+  	  var items = pmenu.container.getElementsByClassName('rmenuitem');
+  		for (var i=0; i<items.length; i++) {
+  		  if (Object.isFunction(items[i]._title_function)) {
+  			  items[i].title = items[i]._title_function(event);
+  				items[i].update(items[i]._title_function(event));
+  			}
+  			if (Object.isFunction(items[i]._id_function))
+  			  items[i].id = items[i]._id_function(event);
+  			if (Object.isFunction(items[i]._disabled_function))
+  			  if (items[i]._disabled_function(event)) {
+					  items[i].removeClassName('enabled');
+  				  items[i].addClassName('disabled');
+  				} else {
+  				  items[i].removeClassName('disabled');
+						items[i].addClassName('enabled');
+					} 
+  		}
+  	}
+  });
+  EventSelectors.start(Rules);
+	sfHover();
+})
 
 	// ]]>
 </script>
 
 
 </head>
-<body onload="EventSelectors.start(Rules); sfHover();">
+<body>
 <div id="menubar">
   <ul id="nav">
     <li class="menufile"><a href="#" id="stupid">File</a>
@@ -226,33 +364,33 @@ var Rules = {
 </div>
 <div id="targets">
   <div class="halfspacer"></div>
-  <div class="button droptarget" id="btn_target_library" title="Drop target: Library"></div>
-	<div class="button droptarget" id="btn_target_graveyard" title="Drop target: Graveyard"></div>
+  <div class="button" id="btn_target_lib" title="Drop target: Library"></div>
+	<div class="button droptarget" id="btn_target_grave" title="Drop target: Graveyard"></div>
 	<div class="button droptarget" id="btn_target_rfg" title="Drop Target: Remove From Game"></div>
 </div>
 <div id="table" class="droptarget">
   <span id="table_out">Table</span>
-  <div class="card">Card8</div>
+	<button id="spawn1">Spawn Troll Ascetic</button>
+	<button id="spawn2">Spawn Aegis of the Meek</button>
+	<button id="spawn3">Spawn Shielding Plax</button>
+  <!-- <div class="card">Card8</div>
 	<div class="card">Card7</div>
 	<div class="card">Card6</div>
 	<div class="card">Card5</div>
 	<div class="card">Card4</div>
 	<div class="card">Card3</div>
 	<div class="card">Card2</div>
-	<div class="card">Card1</div>
+	<div class="card">Card1</div> -->
 </div>
 <div id="hand">
   My Hand
-  <select name="handlist_ctl" id="handlist" class="droptarget" size="2">
-	  <option>3W - Worship</option>
-	  <option>1G - Fertile Ground</option>
-	  <option>1GG - Troll Ascetic</option>
-  </select>
+  <ul id="handlist" class="droptarget">
+  </ul>
 </div>
 <div id="players">Players</div>
 <div id="chat">
   <textarea id="chat_output" disabled></textarea>
-	<input type="text" id="chat_input"></input>
+	<input type="text" id="chat_input" />
 </div>
 
 </body>
